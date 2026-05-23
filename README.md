@@ -1,7 +1,7 @@
 # Poliflow
 
 
-Poliflow es un framework de redes neuronales y autograd desarrollado en Python con fines educativos y experimentales.
+Poliflow es un framework de redes neuronales desarrollado en Python .
 
 
 
