@@ -1085,8 +1085,8 @@ Inserta aquí una imagen generada de la arquitectura:
 ```
 
 
-# Ejercicios
-#  Ejercicio 1 — Aprender la relación \( y = 2x \)
+# Ejemplos de implementacion para regresión y clasificacion binaria
+#  Ejemplo 1 — Aprender la relación \( y = 2x \)
 
 ##  Objetivo
 
@@ -1184,7 +1184,7 @@ b ≈ 0
 
 ---
 
-#  Ejercicio 2 — Comprender ReLU
+#  Ejemplo 2 — Comprender ReLU
 
 ##  Objetivo
 
@@ -1293,11 +1293,772 @@ La red aprenderá el comportamiento típico de ReLU.
 
 #  Resumen
 
-| Ejercicio | Objetivo |
+| Ejemplo | Objetivo |
 |---|---|
 | 1 | Aprender relación lineal |
 | 2 | Comprender activación ReLU |
 | 3 | Aproximar función no lineal |
+
+---
+
+
+# Ejemplo 3 — Regresión con red  neuronal personalizada
+
+## Objetivo
+
+Regresión del precio de casas utilizando PoliFlow.
+
+Este ejemplo implementa una red neuronal construida
+manualmente para resolver un problema de regresión utilizando
+el dataset House Price Regression.
+
+La red neuronal se construye capa por capa utilizando:
+- capas Lineal
+- activación Tanh
+- pérdida MSE
+- optimizador SGD
+
+Además, se visualiza la arquitectura de la red al finalizar.
+
+---
+
+## Dataset
+
+```text
+House Price Regression Dataset
+```
+
+Variables utilizadas:
+
+- Square_Footage
+- Num_Bedrooms
+- Num_Bathrooms
+- Year_Built
+- Lot_Size
+- Garage_Size
+- Neighborhood_Quality
+
+Variable objetivo:
+
+```text
+House_Price
+```
+
+---
+
+## Código completo
+
+```python
+import pandas as pd
+
+from poliflow.core.Tensor import Tensor
+from poliflow.nn.Lineal import Lineal
+from poliflow.nn.Secuencial import Secuencial
+from poliflow.nn.Activacion import Tanh
+from poliflow.perdidas.MSE import MSE
+from poliflow.optim.SGD import SGD
+from poliflow.visual.Grafo import dibujar_red
+
+# ==================================================
+# cargar dataset
+# ==================================================
+df = pd.read_csv("data/house_price_regression_dataset.csv")
+
+# ==================================================
+# separar features y target
+# ==================================================
+#
+# X:
+# variables de entrada
+#
+# y:
+# precio de la casa
+#
+# ==================================================
+X = df.drop(columns=["House_Price"]).values
+y = df["House_Price"].values.reshape(-1, 1)
+
+# ==================================================
+# normalizar datos
+# ==================================================
+#
+# Se utiliza estandarización:
+#
+# x = (x - media) / desviación
+#
+# ==================================================
+X = (X - X.mean(axis=0)) / X.std(axis=0)
+y = (y - y.mean()) / y.std()
+
+# ==================================================
+# dividir train / test
+# ==================================================
+split = int(0.8 * len(X))
+X_train, X_test = X[:split], X[split:]
+y_train, y_test = y[:split], y[split:]
+
+# ==================================================
+# convertir a tensores
+# ==================================================
+X_train = Tensor(X_train)
+y_train = Tensor(y_train)
+
+X_test = Tensor(X_test)
+y_test = Tensor(y_test)
+
+
+# ==================================================
+# construir modelo manualmente
+# ==================================================
+#
+# Arquitectura:
+#
+# 7 -> 12 -> 16 -> 25 -> 20 -> 16 -> 8 -> 1
+#
+# ==================================================
+model = Secuencial(
+    Lineal(7, 12),
+    Tanh(),
+    Lineal(12, 16),
+    Tanh(),
+    Lineal(16, 25),
+    Tanh(),
+    Lineal(25, 20),
+    Tanh(),
+    Lineal(20, 16),
+    Tanh(),
+    Lineal(16, 8),
+    Tanh(),
+    Lineal(8, 1)
+)
+
+# ==================================================
+# función de pérdida
+# ==================================================
+loss_fn = MSE()
+
+# ==================================================
+# optimizador
+# ==================================================
+optimizer = SGD(model.parameters(), lr=0.025)
+
+# ==================================================
+# entrenamiento
+# ==================================================
+epochs = 1000
+
+for epoch in range(epochs):
+    # ------------------------------
+    # forward
+    # ------------------------------
+    y_pred = model(X_train)
+
+    # ------------------------------
+    # calcular pérdida
+    # ------------------------------
+    loss = loss_fn(y_pred, y_train)
+
+    # ------------------------------
+    # limpiar gradientes
+    # ------------------------------
+    optimizer.zero_grad()
+
+    # ------------------------------
+    # backward
+    # ------------------------------
+    loss.backward()
+
+    # ------------------------------
+    # actualizar pesos
+    # ------------------------------
+    optimizer.step()
+
+    # ------------------------------
+    # mostrar progreso
+    # ------------------------------
+    if epoch % 100 == 0:
+        print(f"Epoch {epoch}, " f"Train Loss: {loss.data}")
+
+# ==================================================
+# evaluación
+# ==================================================
+y_pred_test = model(X_test)
+test_loss = loss_fn(y_pred_test, y_test)
+print("\nTest Loss:", test_loss.data)
+
+# ==================================================
+# visualizar arquitectura
+# ==================================================
+dibujar_red(model)
+```
+
+
+---
+
+## Qué observar
+- Se utiliza la librería pandas para la preparacion de los datos
+- La pérdida disminuye gradualmente
+- El modelo aprende relaciones no lineales
+- Las activaciones afectan el comportamiento de la red
+- Redes más profundas pueden aproximar funciones complejas
+
+---
+
+# Ejemplo 4 — Regresión usando Constructor
+
+## Objetivo
+
+Construir automáticamente una red neuronal densa rectangular
+utilizando las herramientas de PoliFlow.
+
+Este ejemplo demuestra cómo generar arquitecturas completas
+con una sola función.
+
+---
+
+## Dataset
+
+```text
+House Price Regression Dataset
+```
+
+---
+
+## Arquitectura generada
+
+```python
+import pandas as pd
+
+from poliflow.core.Tensor import Tensor
+from poliflow.herramientas.Constructor import construir_red_densa
+from poliflow.herramientas.Entrenador import entrenar
+from poliflow.visual.Grafo import dibujar_red
+from poliflow.perdidas.MSE import MSE
+
+# ==================================================
+# cargar dataset
+# ==================================================
+df = pd.read_csv("data/house_price_regression_dataset.csv")
+
+# ==================================================
+# separar features y target
+# ==================================================
+X = df.drop(columns=["House_Price"]).values
+y = df["House_Price"].values.reshape(-1, 1)
+
+# ==================================================
+# normalizar datos
+# ==================================================
+X = (X - X.mean(axis=0)) / X.std(axis=0)
+y = (y - y.mean()) / y.std()
+
+# ==================================================
+# dividir train / test
+# ==================================================
+split = int(0.8 * len(X))
+X_train, X_test = X[:split], X[split:]
+y_train, y_test = y[:split], y[split:]
+
+# ==================================================
+# convertir a tensores
+# ==================================================
+X_train = Tensor(X_train)
+y_train = Tensor(y_train)
+
+X_test = Tensor(X_test)
+y_test = Tensor(y_test)
+
+# ==================================================
+# construir modelo automáticamente
+# ==================================================
+#
+# Arquitectura generada:
+#
+# 7 -> 20 -> 20 -> 20 -> 20 -> 20 -> 20 -> 1
+#
+# con activación Tanh entre capas
+#
+# ==================================================
+model = construir_red_densa(
+    tamaño_entrada=7,
+    tamaño_salida=1,
+    num_capas_ocultas=6,
+    tamaño_capa_oculta=20,
+    fn_activacion="tanh",
+    tarea="regresion"
+)
+
+# ==================================================
+# entrenamiento automático
+# ==================================================
+entrenar(
+    modelo=model,
+    x_entrenamiento=X_train,
+    y_entrenamiento=y_train,
+    epocas=1000,
+    lr=0.025,
+    perdida="mse",
+    optimizador="sgd"
+)
+
+# ==================================================
+# evaluación
+# ==================================================
+loss_fn = MSE()
+y_pred_test = model(X_test)
+test_loss = loss_fn(y_pred_test, y_test)
+print("\nTest Loss:", test_loss.data)
+
+# ==================================================
+# visualizar arquitectura
+# ==================================================
+dibujar_red(model)
+```
+
+---
+
+## Qué aprenderás
+
+- Uso del constructor automático
+- Generación dinámica de arquitecturas
+- Redes rectangulares
+- Automatización de entrenamiento
+- Entrenamiento simplificado
+
+---
+
+## Qué observar
+
+- El constructor genera automáticamente:
+  - capas ocultas
+  - activaciones
+  - capa de salida
+
+- La red puede entrenarse sin construir manualmente
+  cada capa
+
+- Diferentes activaciones producen comportamientos distintos
+
+---
+
+# Ejemplo 5 — Clasificación binaria con red neuronal personalizada
+
+## Objetivo
+
+Clasificación binaria del dataset Breast Cancer Wisconsin
+utilizando PoliFlow.
+
+Este ejemplo construye manualmente una red neuronal densa
+sin utilizar las herramientas automáticas de construcción
+y entrenamiento.
+
+El objetivo es clasificar tumores como:
+- 0 -> benigno
+- 1 -> maligno
+---
+
+## Código completo
+
+```python
+import pandas as pd
+
+from poliflow.core.Tensor import Tensor
+from poliflow.nn.Lineal import Lineal
+from poliflow.nn.Secuencial import Secuencial
+from poliflow.nn.Activacion import LeakyReLU
+from poliflow.nn.Activacion import Sigmoide
+from poliflow.perdidas.BCE import BCE
+from poliflow.optim.Momentum import Momentum
+from poliflow.visual.Grafo import dibujar_red
+
+# ==================================================
+# cargar dataset
+# ==================================================
+df = pd.read_csv("data/breast_cancer_clasification.csv")
+
+# ==================================================
+# eliminar columna ID
+# ==================================================
+df = df.drop(columns=["id"])
+
+# ==================================================
+# convertir etiquetas
+# M -> maligno -> 1
+# B -> benigno -> 0
+# ==================================================
+df["diagnosis"] = df["diagnosis"].map({"M": 1,"B": 0})
+
+# ==================================================
+# separar features y target
+# ==================================================
+X = df.drop(columns=["diagnosis"]).values
+y = df["diagnosis"].values.reshape(-1, 1)
+
+# ==================================================
+# normalizar features
+# ==================================================
+X = (X - X.mean(axis=0)) / X.std(axis=0)
+
+# ==================================================
+# dividir train / test
+# ==================================================
+split = int(0.8 * len(X))
+X_train, X_test = X[:split], X[split:]
+y_train, y_test = y[:split], y[split:]
+
+# ==================================================
+# convertir a tensores
+# ==================================================
+X_train = Tensor(X_train)
+y_train = Tensor(y_train)
+
+X_test = Tensor(X_test)
+y_test = Tensor(y_test)
+
+# ==================================================
+# construir modelo manualmente
+# ==================================================
+#
+# Arquitectura:
+#
+# 30 -> 34 -> 36 -> 38 -> 35 -> 36 -> 1
+#
+# con activación LeakyReLU entre capas
+# y Sigmoide al final para clasificación binaria
+#
+# ==================================================
+model = Secuencial(
+    Lineal(30, 34),
+    LeakyReLU(),
+    Lineal(34, 36),
+    LeakyReLU(),
+    Lineal(36, 38),
+    LeakyReLU(),
+    Lineal(38, 35),
+    LeakyReLU(),
+    Lineal(35, 33),
+    LeakyReLU(),
+    Lineal(33, 1),
+    Sigmoide()
+)
+
+# ==================================================
+# función de pérdida
+# ==================================================
+loss_fn = BCE()
+
+# ==================================================
+# optimizador
+# ==================================================
+optimizer = Momentum(model.parameters(), lr=0.001, beta=0.9)
+
+# ==================================================
+# entrenamiento
+# ==================================================
+epochs = 4000
+
+for epoch in range(epochs):
+    # ------------------------------
+    # forward
+    # ------------------------------
+    y_pred = model(X_train)
+
+    # ------------------------------
+    # calcular pérdida
+    # ------------------------------
+    loss = loss_fn(y_pred, y_train)
+
+    # ------------------------------
+    # limpiar gradientes
+    # ------------------------------
+    optimizer.zero_grad()
+
+    # ------------------------------
+    # backward
+    # ------------------------------
+    loss.backward()
+
+    # ------------------------------
+    # actualizar parámetros
+    # ------------------------------
+    optimizer.step()
+
+    # ------------------------------
+    # mostrar progreso
+    # ------------------------------
+    if epoch % 100 == 0:
+        print(f"Época {epoch}, "f"Pérdida: {loss.data}")
+
+# ==================================================
+# evaluación
+# ==================================================
+y_pred_test = model(X_test)
+
+# ==================================================
+# convertir probabilidades
+# a clases binarias
+# ==================================================
+predicciones = (y_pred_test.data > 0.5).astype(int)
+
+# ==================================================
+# accuracy
+# ==================================================
+accuracy = (predicciones == y_test.data).mean()
+print("\nAccuracy:", accuracy)
+
+# ==================================================
+# mostrar primeras predicciones
+# ==================================================
+print("\nPrimeras predicciones:\n")
+
+for i in range(10):
+    probabilidad = y_pred_test.data[i][0]
+    prediccion = predicciones[i][0]
+    valor_real = int(y_test.data[i][0])
+    print(f"Probabilidad: {probabilidad:.4f} | " f"Predicción: {prediccion} | " f"Real: {valor_real}")
+
+# ==================================================
+# visualizar arquitectura
+# ==================================================
+dibujar_red(model)
+```
+
+---
+
+
+## Qué observar
+
+- La salida final representa probabilidades
+- Valores cercanos a:
+  - 0 → clase negativa
+  - 1 → clase positiva
+
+- BCE penaliza predicciones incorrectas
+- Sigmoide transforma la salida al rango (0,1)
+
+---
+
+# Ejemplo 6 — Clasificación binaria usando Constructor
+
+## Objetivo
+
+Crear automáticamente una red neuronal para clasificación binaria
+utilizando las herramientas de construcción y entrenamiento
+de PoliFlow.
+
+---
+
+## Código completo
+
+```python
+import pandas as pd
+
+from poliflow.core.Tensor import Tensor
+from poliflow.herramientas.Constructor import construir_red_densa
+from poliflow.herramientas.Entrenador import entrenar
+from poliflow.visual.Grafo import dibujar_red
+
+# ==================================================
+# cargar dataset
+# ==================================================
+df = pd.read_csv("data/breast_cancer_clasification.csv")
+
+# ==================================================
+# eliminar columna ID
+# ==================================================
+df = df.drop(columns=["id"])
+
+# ==================================================
+# convertir etiquetas
+#
+# M -> maligno -> 1
+# B -> benigno -> 0
+# ==================================================
+df["diagnosis"] = df["diagnosis"].map({"M": 1, "B": 0})
+
+# ==================================================
+# separar features y target
+# ==================================================
+X = df.drop(columns=["diagnosis"]).values
+y = df["diagnosis"].values.reshape(-1, 1)
+
+# ==================================================
+# normalizar features
+#
+# Se utiliza normalización Z-score:
+#
+# x_normalizado = (x - media) / desviación
+# ==================================================
+X = (X - X.mean(axis=0)) / X.std(axis=0)
+
+# ==================================================
+# dividir dataset
+#
+# 80% entrenamiento
+# 20% prueba
+# ==================================================
+split = int(0.8 * len(X))
+X_train, X_test = X[:split], X[split:]
+y_train, y_test = y[:split], y[split:]
+
+# ==================================================
+# convertir a tensores
+# ==================================================
+X_train = Tensor(X_train)
+y_train = Tensor(y_train)
+
+X_test = Tensor(X_test)
+y_test = Tensor(y_test)
+
+
+# ==================================================
+# construir red neuronal automáticamente
+# ==================================================
+#
+# Arquitectura generada:
+#
+# 30 -> 36 -> 36 -> 36 -> 36 -> 36 -> 1
+#
+# con:
+# - LeakyReLU entre capas
+# - Sigmoide al final
+#
+# debido a que:
+#
+# tarea = "binaria"
+#
+# ==================================================
+model = construir_red_densa(
+    tamaño_entrada=30,
+    tamaño_salida=1,
+    num_capas_ocultas=5,
+    tamaño_capa_oculta=36,
+    fn_activacion="leakyrelu",
+    tarea="binaria"
+)
+
+# ==================================================
+# entrenar modelo
+# ==================================================
+#
+# Se utiliza:
+#
+# - BCE como función de pérdida
+# - Momentum como optimizador
+#
+# ==================================================
+entrenar(
+    modelo=model,
+    x_entrenamiento=X_train,
+    y_entrenamiento=y_train,
+    epocas=4000,
+    lr=0.001,
+    perdida="bce",
+    optimizador="momentum",
+    beta=0.9
+)
+
+# ==================================================
+# realizar predicciones
+# ==================================================
+y_pred = model(X_test)
+
+# ==================================================
+# convertir probabilidades
+# a clases binarias
+#
+# Si probabilidad > 0.5:
+#     clase = 1
+# Si no:
+#     clase = 0
+# ==================================================
+predicciones = (y_pred.data > 0.5).astype(int)
+
+# ==================================================
+# calcular accuracy
+# ==================================================
+accuracy = (predicciones == y_test.data).mean()
+print("\nAccuracy:", accuracy)
+
+# ==================================================
+# mostrar primeras predicciones
+#==================================================
+
+print("\nPrimeras predicciones:\n")
+
+for i in range(10):
+    probabilidad = y_pred.data[i][0]
+    prediccion = predicciones[i][0]
+    valor_real = int(y_test.data[i][0])
+    print(f"Probabilidad: {probabilidad:.4f} | " f"Predicción: {prediccion} | " f"Real: {valor_real}")
+
+# ==================================================
+# visualizar arquitectura de la red
+# ==================================================
+dibujar_red(model)
+
+```
+
+---
+
+## Qué aprenderás
+
+- Construcción automática de modelos
+- Clasificación binaria simplificada
+- Uso automático de Sigmoide
+- Entrenamiento mediante herramientas de PoliFlow
+- Configuración rápida de redes neuronales
+
+---
+
+## Qué observar
+
+- El constructor agrega automáticamente:
+  - capas ocultas
+  - activaciones
+  - capa de salida
+  - Sigmoide para clasificación binaria
+
+- El entrenamiento puede realizarse con pocas líneas de código
+
+- PoliFlow permite construir modelos completos
+  sin definir manualmente cada capa
+
+---
+
+## Resumen de capacidades actuales de PoliFlow
+
+Actualmente PoliFlow soporta:
+
+- Tensores con autograd
+- Backpropagation automático
+- Redes neuronales densas
+- Arquitecturas secuenciales
+- Funciones de activación:
+  - ReLU
+  - Sigmoide
+  - Tanh
+  - LeakyReLU
+  - ELU
+
+- Funciones de pérdida:
+  - MSE
+  - MAE
+  - BCE
+
+- Optimizadores:
+  - SGD
+  - Momentum
+
+- Problemas de:
+  - regresión
+  - clasificación binaria
+
+- Construcción automática de arquitecturas
+- Entrenamiento simplificado
+- Visualización de redes neuronales
+
+---
 
 
 # GitHub del proyecto
